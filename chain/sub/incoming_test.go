@@ -50,6 +50,7 @@ func TestFetchCidsWithDedup(t *testing.T) {
 	g := &getter{msgs}
 
 	// the cids have a duplicate
+	//stm: @CHAIN_INCOMING_FETCH_MESSAGES_BY_CID_001
 	res, err := FetchMessagesByCids(context.TODO(), g, append(cids, cids[0]))
 
 	t.Logf("err: %+v", err)
