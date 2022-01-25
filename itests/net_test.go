@@ -65,6 +65,15 @@ func TestNetConn(t *testing.T) {
 		t.Errorf("peer should have disconnected")
 	}
 
+	peers, err = firstNode.NetPeers(ctx)
+	if err != nil {
+		require.NoError(t, err)
+	}
+
+	if len(peers) > 0 {
+		t.Errorf("there should be no peers in network after disconnecting node")
+	}
+
 }
 
 func getConnState(ctx context.Context, t *testing.T, node *kit.TestFullNode, peer peer.ID) network.Connectedness {
