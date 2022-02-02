@@ -438,6 +438,7 @@ func (tu *syncTestUtil) waitUntilSync(from, to int) {
 }
 
 func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
+	fmt.Println("DIVIC: start")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -445,6 +446,7 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 	if err != nil {
 		tu.t.Fatal(err)
 	}
+	fmt.Println("DIVIC: after chain notify")
 
 	timeout := time.After(5 * time.Second)
 
@@ -457,6 +459,7 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 				}
 			}
 		case <-timeout:
+			fmt.Println("DIVIC: timeout")
 			tu.t.Fatal("waitUntilSyncTarget timeout")
 		}
 	}
@@ -502,6 +505,75 @@ func TestSyncMining(t *testing.T) {
 		tu.waitUntilSync(0, client)
 		tu.compareSourceState(client)
 	}
+}
+
+// TestSyncManualBadTS tests manually marking and unmarking blocks in the bad TS cache
+func TestSyncManualBadTS(t *testing.T) {
+	// Test setup:
+	// - source node is fully synced,
+	// - client node is unsynced
+	// - client manually marked source's head and it's parent as bad
+	H := 50
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+	require.NoError(t, tu.mn.LinkAll())
+
+	sourceHead, err := tu.nds[source].ChainHead(tu.ctx)
+	require.NoError(tu.t, err)
+
+	clientHead, err := tu.nds[client].ChainHead(tu.ctx)
+	require.NoError(tu.t, err)
+
+	require.True(tu.t, !sourceHead.Equals(clientHead), "source and client should be out of sync in test setup")
+
+	err = tu.nds[client].SyncMarkBad(tu.ctx, sourceHead.Cids()[0])
+	require.NoError(tu.t, err)
+
+	sourceHeadParent := sourceHead.Parents().Cids()[0]
+	err = tu.nds[client].SyncMarkBad(tu.ctx, sourceHeadParent)
+	require.NoError(tu.t, err)
+
+	reason, err := tu.nds[client].SyncCheckBad(tu.ctx, sourceHead.Cids()[0])
+	require.NoError(tu.t, err)
+	require.NotEqual(tu.t, "", reason, "block is not bad after manually marking")
+
+	reason, err = tu.nds[client].SyncCheckBad(tu.ctx, sourceHeadParent)
+	require.NoError(tu.t, err)
+	require.NotEqual(tu.t, "", reason, "block is not bad after manually marking")
+
+	// Assertion 1:
+	// - client shouldn't be synced after timeout, because the source TS is marked bad.
+	// - bad block is the first block that should be synced, 1sec should be enough
+	tu.connect(1, 0)
+	timeout := time.After(1 * time.Second)
+	<-timeout
+
+	clientHead, err = tu.nds[client].ChainHead(tu.ctx)
+	require.NoError(tu.t, err)
+	require.True(tu.t, !sourceHead.Equals(clientHead), "source and client should be out of sync if source head is bad")
+
+	// Assertion 2:
+	// - after unmarking blocks as bad and reconnecting, source & client should be in sync
+	err = tu.nds[client].SyncUnmarkBad(tu.ctx, sourceHead.Cids()[0])
+	require.NoError(tu.t, err)
+
+	reason, err = tu.nds[client].SyncCheckBad(tu.ctx, sourceHead.Cids()[0])
+	require.NoError(tu.t, err)
+	require.Equal(tu.t, "", reason, "block is still bad after manually unmarking")
+
+	err = tu.nds[client].SyncUnmarkAllBad(tu.ctx)
+	require.NoError(tu.t, err)
+
+	reason, err = tu.nds[client].SyncCheckBad(tu.ctx, sourceHeadParent)
+	require.NoError(tu.t, err)
+	require.Equal(tu.t, "", reason, "block is still bad after manually unmarking")
+
+	tu.disconnect(1, 0)
+	tu.connect(1, 0)
+
+	tu.waitUntilSync(0, client)
+	tu.compareSourceState(client)
 }
 
 func TestSyncBadTimestamp(t *testing.T) {
