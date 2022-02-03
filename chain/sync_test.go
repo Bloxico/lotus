@@ -1098,3 +1098,35 @@ func TestInvalidHeight(t *testing.T) {
 
 	tu.mineOnBlock(base, 0, nil, false, true, nil, -1, true)
 }
+
+// TestIncomingBlocks mines new blocks and checks if the incoming channel streams new block headers properly
+func TestIncomingBlocks(t *testing.T) {
+	H := 50
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+	require.NoError(t, tu.mn.LinkAll())
+
+	clientNode := tu.nds[client]
+	incoming, err := clientNode.SyncIncomingBlocks(tu.ctx)
+	require.NoError(tu.t, err)
+
+	tu.connect(client, 0)
+	tu.waitUntilSync(0, client)
+	tu.compareSourceState(client)
+
+	timeout := time.After(10 * time.Second)
+
+	for i := 0; i < 5; i++ {
+		tu.mineNewBlock(0, nil)
+		tu.waitUntilSync(0, client)
+		tu.compareSourceState(client)
+
+		// just in case, so we don't get deadlocked
+		select {
+		case <-incoming:
+		case <-timeout:
+			tu.t.Fatal("TestIncomingBlocks timeout")
+		}
+	}
+}
