@@ -18,16 +18,19 @@ func TestNetBlockPeer(t *testing.T) {
 	firstNode, secondNode, _, ens := kit.EnsembleTwoOne(t)
 	ens.InterconnectAll()
 
+	//stm: @NETWORK_COMMON_ID_001
 	secondNodeID, err := secondNode.ID(ctx)
 	if err != nil {
 		require.NoError(t, err)
 	}
 
+	//stm: @NETWORK_COMMON_BLOCK_ADD_001
 	err = firstNode.NetBlockAdd(ctx, api.NetBlockList{Peers: []peer.ID{secondNodeID}})
 	if err != nil {
 		require.NoError(t, err)
 	}
 
+	//stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err := firstNode.NetBlockList(ctx)
 	if err != nil {
 		require.NoError(t, err)
@@ -37,11 +40,13 @@ func TestNetBlockPeer(t *testing.T) {
 		t.Errorf("blocked peer not in blocked peer list")
 	}
 
+	//stm: @NETWORK_COMMON_BLOCK_REMOVE_001
 	err = firstNode.NetBlockRemove(ctx, api.NetBlockList{Peers: []peer.ID{secondNodeID}})
 	if err != nil {
 		require.NoError(t, err)
 	}
 
+	//stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err = firstNode.NetBlockList(ctx)
 	if err != nil {
 		require.NoError(t, err)
@@ -59,6 +64,7 @@ func TestNetBlockIPAddr(t *testing.T) {
 	firstNode, secondNode, _, ens := kit.EnsembleTwoOne(t)
 	ens.InterconnectAll()
 
+	//stm: @NETWORK_COMMON_ADDRS_LISTEN_001
 	addrInfo, _ := secondNode.NetAddrsListen(ctx)
 
 	var secondNodeIPs []string
@@ -71,11 +77,13 @@ func TestNetBlockIPAddr(t *testing.T) {
 		secondNodeIPs = append(secondNodeIPs, ip.String())
 	}
 
+	//stm: @NETWORK_COMMON_BLOCK_ADD_001
 	err := firstNode.NetBlockAdd(ctx, api.NetBlockList{IPAddrs: secondNodeIPs})
 	if err != nil {
 		require.NoError(t, err)
 	}
 
+	//stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err := firstNode.NetBlockList(ctx)
 	if err != nil {
 		require.NoError(t, err)
@@ -85,11 +93,13 @@ func TestNetBlockIPAddr(t *testing.T) {
 		t.Errorf("blocked ip not in blocked ip list")
 	}
 
+	//stm: @NETWORK_COMMON_BLOCK_REMOVE_001
 	err = firstNode.NetBlockRemove(ctx, api.NetBlockList{IPAddrs: secondNodeIPs})
 	if err != nil {
 		require.NoError(t, err)
 	}
 
+	//stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err = firstNode.NetBlockList(ctx)
 	if err != nil {
 		require.NoError(t, err)
